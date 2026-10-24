@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Bantuan penyusunan artikel ilmiah sekolah dasar berdasarkan ide, judul, dan metodologi dari penulis, bukan alat untuk memfabrikasi artikel.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://api.openai.com https://api.crossref.org; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Ruang Riset SD — Dari ide ke metodologi</title>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#workspace">Langsung ke ruang kerja</a>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Ruang Riset SD, beranda"><span class="brand-mark">r<span>✳</span></span><span>ruang riset <b>SD</b><small>PROPERTY OF PGSD UPI SERANG</small></span></a>
+    <div class="top-actions"><span id="key-status" class="status-dot">BYOK · belum terhubung</span><button class="button secondary small" id="open-settings">Pengaturan API <span aria-hidden="true">↗</span></button></div>
+  </header>
+  <main id="workspace" tabindex="-1">
+    <div class="workspace-bar"><div><span class="overline">RUANG KERJA PENULIS</span><span id="save-status" class="muted">Draf tersimpan di perangkat ini</span></div><div class="draft-actions"><label class="sr-only" for="draft-list">Pilih draf</label><select id="draft-list"><option>Draf baru</option></select><button class="button text small" id="new-draft">+ Draf baru</button><button class="button text small" id="import-draft">Impor</button><input type="file" id="import-file" accept="application/json,.json" hidden></div></div>
+    <section class="author-guide" aria-labelledby="author-guide-title">
+      <h2 id="author-guide-title">Bantuan menyusun artikel ilmiah, bukan memfabrikasi artikel.</h2>
+      <p><strong>Ide, judul, dan metodologi penelitian harus berasal dari penulis.</strong> Program ini membantu menata gagasan, menelusuri referensi, dan menyusun draf berdasarkan gagasan serta rancangan yang Anda berikan.</p>
+      <p>Saran judul dan metode merupakan bahan pertimbangan yang perlu Anda tinjau dan sesuaikan dengan penelitian sendiri. Penulis tetap menentukan keputusan akhir, memeriksa sumber dan isi draf, serta bertanggung jawab atas keaslian dan ketepatan artikel. Jangan gunakan program untuk mengarang data, hasil penelitian, atau referensi.</p>
+    </section>
+    <nav id="steps" class="steps" aria-label="Tahap perancangan"></nav>
+    <div id="notice" role="status" aria-live="polite" hidden></div>
+    <div id="busy" class="busy" role="status" aria-live="polite" hidden><span class="spinner" aria-hidden="true"></span><span id="busy-text"></span><button class="button text small" id="cancel">Batalkan</button></div>
+    <div class="workspace-grid"><section id="content" aria-label="Perancangan artikel"></section><aside id="sources" aria-label="Pustaka penelitian"></aside></div>
+    <section id="article" class="article-preview" hidden></section>
+    <div class="bottom-bar"><span><span class="tiny-dot"></span> Tema SD · Judul → Pendahuluan → Metodologi</span><div><button class="button text small" id="backup">Cadangkan JSON</button><button class="button text small danger" id="delete-draft">Hapus draf</button></div></div>
+  </main>
+  <footer><span>ruang riset SD <span class="muted">/</span> Ruang untuk gagasan yang berdasar.</span><span>API key Anda. Kendali Anda.</span></footer>
+  <dialog id="settings-dialog" aria-labelledby="settings-title"><form id="settings-form"><div class="dialog-heading"><div><span class="overline">KONEKSI PRIBADI</span><h2 id="settings-title">Bawa API key Anda.</h2></div><button type="button" class="icon-button" id="close-settings" aria-label="Tutup pengaturan">×</button></div><p class="muted">Permintaan AI dikirim langsung ke OpenAI. Biaya mengikuti akun API Anda; langganan ChatGPT terpisah dari saldo API.</p><label for="api-key">OpenAI API key</label><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Masukkan untuk menyimpan atau mengganti"><p id="stored-key" class="help"></p><label class="check"><input id="remember-key" type="checkbox"> Ingat key di perangkat pribadi ini</label><p class="help">Default: selama sesi tab. Penyimpanan browser tidak terenkripsi; hindari perangkat bersama. Key tidak masuk cadangan draf.</p><p class="note-box">Model tetap: <strong>GPT-6.1 Sol</strong><br><span class="help">gpt-6.1-sol · seluruh proses AI menggunakan model ini.</span></p><div class="two-col"><div><label for="max-tokens">Batas token keluaran</label><input id="max-tokens" type="number" min="2000" max="32000" step="1000" required></div><div><label for="timeout">Batas waktu (detik)</label><input id="timeout" type="number" min="30" max="600" required></div></div><label for="email">Email kontak Crossref (opsional)</label><input id="email" type="email" maxlength="180" placeholder="nama@kampus.ac.id"><div class="dialog-actions"><button class="button" type="submit">Simpan pengaturan</button><button class="button secondary" type="button" id="test-key">Tes koneksi</button><button class="button text danger" type="button" id="remove-key">Hapus key</button></div><p id="settings-message" class="help" role="status"></p></form></dialog>
+  <noscript><p>Aplikasi ini membutuhkan JavaScript. Aktifkan JavaScript untuk membuka ruang kerja.</p></noscript>
+</body>
+</html>
