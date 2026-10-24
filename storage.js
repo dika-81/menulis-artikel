@@ -1,4 +1,4 @@
-import {VERSION,MODEL_ID,newDraft,now,normalizeDoi,validDoi,assertSchema,schemas,validateOptions} from './core.js';
+import {VERSION,MODEL_ID,newDraft,now,normalizeDoi,validDoi,assertSectionSchema,validateOptions} from './core.js';
 const PREFIX = 'ruang-riset-sd:v1:';
 export const DEFAULT_SETTINGS = {model:MODEL_ID,maxTokens:10000,timeout:240,email:''};
 const get = (storage,key) => {try{return storage.getItem(PREFIX+key);}catch{return null;}};
@@ -50,10 +50,9 @@ export function parseImport(text) {
   draft.title=textField(item.title);draft.methodChoice=textField(item.methodChoice||'');
   if(item.titleOptions?.length)draft.titleOptions=validateOptions('titles',{options:item.titleOptions});
   if(item.methodOptions?.length)draft.methodOptions=validateOptions('methods',{options:item.methodOptions});
-  for(const kind of ['introduction','methodology'])if(item[kind]){assertSchema(item[kind],schemas[kind]);draft[kind]=item[kind];}
-  draft.pendingAudit=['introduction','methodology'].filter(kind=>draft[kind]);
+  for(const kind of ['introduction','methodology'])if(item[kind]){assertSectionSchema(kind,item[kind]);draft[kind]=item[kind];}
   if(draft.introduction&&!draft.title.trim()||draft.methodology&&!draft.introduction)throw Error('Urutan bagian dalam draf impor tidak lengkap.');
-  const seen=new Set();let selectedCount=0;
-  draft.references=item.references.map(ref=>{const doi=normalizeDoi(ref?.doi);if(!validDoi(doi)||seen.has(doi))throw Error('Ada DOI tidak valid atau duplikat dalam cadangan.');seen.add(doi);const selected=Boolean(ref.selected)&&selectedCount++<8;return {id:doi,doi,title:textField(ref.title||doi),authors:[],year:'',abstract:'',selected,origin:'Impor',provider:'',verifiedAt:''};});
+  const seen=new Set();
+  draft.references=item.references.map(ref=>{const doi=normalizeDoi(ref?.doi);if(!validDoi(doi)||seen.has(doi))throw Error('Ada DOI tidak valid atau duplikat dalam cadangan.');seen.add(doi);const selected=Boolean(ref.selected);return {id:doi,doi,title:textField(ref.title||doi),authors:[],year:'',abstract:'',selected,origin:'Impor',provider:'',verifiedAt:''};});
   return draft;
 }

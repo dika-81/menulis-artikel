@@ -14,6 +14,10 @@ Jangan menempelkan key ke kode, README, issue, atau commit. Tidak diperlukan Git
 
 Di **Settings → Pages**, pilih **Deploy from a branch**, branch **main**, folder **/ (root)**, lalu **Save**. Semua aset aplikasi berada di root dan menggunakan URL relatif. Tidak ada backend atau dependensi instalasi. Setiap pengguna memerlukan API key serta saldo API sendiri untuk bantuan AI.
 
-## Berkas
+## Pendahuluan dan gap penelitian
+
+Centang sumber yang relevan dan klik **Susun pendahuluan & gap**, atau gunakan **Pilih semua & susun pendahuluan** untuk memilih semua sumber berabstrak yang siap digunakan. Seluruh sumber pilihan dipakai dalam satu permintaan AI, tanpa audit tambahan yang menahan draf. Petikan yang perlu dicocokkan ditampilkan sebagai catatan pemeriksaan untuk penulis. Gap menjelaskan aspek yang belum tercakup dalam sumber terpilih dan arah penelitian yang dapat dikembangkan; ini belum membuktikan bahwa penelitian tersebut belum pernah dilakukan. Gap ikut dalam ekspor DOCX dan PDF.
+
+## Berkas aplikasi
 
 index.html, styles.css, print.css, icon.svg, app.js, core.js, ai.js, references.js, storage.js, docx.js, dan local-references.json menjalankan aplikasi. .nojekyll menonaktifkan pemrosesan Jekyll. Jangan unggah .env, draf pribadi, berkas cadangan, atau hasil ekspor artikel ke repositori ini.

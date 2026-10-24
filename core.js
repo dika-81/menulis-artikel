@@ -14,13 +14,12 @@ export const validDoi = doi => /^10\.\d{4,9}\/[^\s<>"?#]+$/i.test(doi);
 export const normalized = text => plain(text).normalize('NFKC').toLowerCase();
 export const sourceIdentity = ref => normalized(ref.title).replace(/[^\p{L}\p{N}]/gu,'');
 export function newDraft() {
-  return {version:VERSION,id:crypto.randomUUID(),createdAt:now(),updatedAt:now(),input:{theme:'',problem:'',grade:'Belum ditentukan',context:'',goal:''},titleOptions:[],title:'',introduction:null,methodOptions:[],methodChoice:'',methodInput:{design:'',subjects:'',instruments:'',analysis:'',procedure:''},methodology:null,references:[],pendingAudit:[]};
+  return {version:VERSION,id:crypto.randomUUID(),createdAt:now(),updatedAt:now(),input:{theme:'',problem:'',grade:'Belum ditentukan',context:'',goal:''},titleOptions:[],title:'',introduction:null,methodOptions:[],methodChoice:'',methodInput:{design:'',subjects:'',instruments:'',analysis:'',procedure:''},methodology:null,references:[]};
 }
 export function resetAfter(draft, stage) {
   if (stage === 'input') { draft.titleOptions=[]; draft.title=''; }
   if (['input','title'].includes(stage)) { draft.introduction=null; draft.methodOptions=[]; draft.methodChoice=''; }
   if (['input','title','introduction','method'].includes(stage)) draft.methodology=null;
-  draft.pendingAudit=(draft.pendingAudit||[]).filter(kind=>draft[kind]);
 }
 export function isVerified(ref) {
   const checked = Date.parse(ref.verifiedAt);
@@ -37,10 +36,9 @@ const sentence = object({text:str,kind:{type:'string',enum:['literature','plan']
 const paragraph = object({sentences:array(sentence)});
 export const schemas = {
   titles: object({options:array(object({title:str,reason:str,method_hint:str,limitations:str}))}),
-  introduction: object({paragraphs:array(paragraph),objective:str,question:str}),
+  introduction: object({paragraphs:array(paragraph),research_gap:object({summary:str,source_ids:array(str),proposed_direction:str}),objective:str,question:str}),
   methods: object({options:array(object({name:str,reason:str,data_needed:str,analysis:str,limitations:str}))}),
   methodology: object({sections:array(object({heading:str,paragraphs:array(paragraph)})),missing_info:array(str)}),
-  audit: object({checks:array(object({id:str,supported:{type:'boolean'},reason:str}))}),
 };
 export function assertSchema(data, schema, path='hasil') {
   if (schema.type === 'object') {
@@ -61,30 +59,41 @@ export function sentencesOf(data) {
   return paragraphs.flatMap(paragraph=>paragraph.sentences);
 }
 const rawCitation = /https?:\/\/|\b10\.\d{4,9}\/|\([^()\n]*\b(?:19|20)\d{2}[a-z]?\)|\[(?:R\d|ref|doi)[^\]]*\]/i;
+export function assertSectionSchema(kind,data) {
+  const schema=schemas[kind];
+  // Older backups predate the separate gap section.
+  assertSchema(data,kind==='introduction'&&data&&typeof data==='object'&&!('research_gap' in data)?{...schema,required:schema.required.filter(key=>key!=='research_gap')}:schema);
+}
 export function validatePassages(kind, data, references) {
-  assertSchema(data,schemas[kind]);
+  assertSectionSchema(kind,data);
   const refs = new Map(references.filter(eligible).map(ref=>[ref.id,ref]));
   if (kind === 'introduction' && (data.paragraphs.length < 3 || data.paragraphs.length > 5 || !data.objective.trim() || !data.question.trim())) throw Error('Pendahuluan harus terdiri atas 3–5 paragraf, tujuan, dan rumusan masalah.');
   if (kind === 'methodology' && (data.sections.length < 5 || data.sections.length > 10)) throw Error('Metodologi harus mencakup 5–10 komponen penelitian.');
   const paragraphs = data.paragraphs || data.sections.flatMap(s=>s.paragraphs);
   if (paragraphs.some(p=>!p.sentences.length)) throw Error('Ada paragraf kosong dalam keluaran AI.');
   const sentences = sentencesOf(data);
-  const used = new Set();
   for (const item of sentences) {
     if (!item.text.trim() || rawCitation.test(item.text)) throw Error('Teks memuat sitasi/tautan bebas atau kalimat kosong. Jalankan ulang tahap ini.');
-    if (item.kind === 'plan' && item.evidence.length) throw Error('Rencana penelitian harus dipisahkan dari klaim literatur.');
-    if (item.kind === 'literature' && !item.evidence.length) throw Error('Ada klaim literatur tanpa bukti sumber.');
     for (const proof of item.evidence) {
       const ref = refs.get(proof.source_id);
       if (!ref) throw Error('AI menggunakan sumber yang belum dipilih atau belum terverifikasi.');
-      const quote = normalized(proof.quote);
-      if (quote.length < 25 || !normalized(ref.abstract).includes(quote)) throw Error('Potongan bukti tidak ditemukan dalam abstrak sumber. Keluaran ditolak.');
-      used.add(ref.id);
     }
   }
-  if (new Set([...used].map(id=>sourceIdentity(refs.get(id)))).size < (kind === 'introduction' ? 2 : 1)) throw Error('Bukti literatur belum cukup: gunakan minimal dua sumber berbeda untuk pendahuluan dan satu untuk metodologi.');
+  for(const id of data.research_gap?.source_ids||[])if(!refs.has(id))throw Error('Gap merujuk sumber yang belum dipilih.');
   if (kind === 'introduction' && [data.objective,data.question].some(text=>!text.trim() || rawCitation.test(text))) throw Error('Tujuan atau rumusan masalah tidak valid.');
   return data;
+}
+export function passageWarnings(kind,data,references) {
+  const refs=new Map(references.map(ref=>[ref.id,ref]));
+  const warnings=[];
+  for(const [index,item] of sentencesOf(data).entries()) {
+    if(item.kind==='literature'&&!item.evidence.length)warnings.push(`Kalimat ${index+1}: periksa dukungan sumber untuk “${item.text}”.`);
+    for(const proof of item.evidence) {
+      const ref=refs.get(proof.source_id),quote=normalized(proof.quote);
+      if(quote.length<25||!normalized(ref?.abstract).includes(quote))warnings.push(`Kalimat ${index+1}, sumber “${ref?.title||proof.source_id}”: petikan perlu dicocokkan dengan abstrak. Teks: “${item.text}”.`);
+    }
+  }
+  return warnings;
 }
 export function validateOptions(kind,data) {
   assertSchema(data,schemas[kind]);
@@ -93,7 +102,7 @@ export function validateOptions(kind,data) {
   return data.options;
 }
 export function usedReferences(draft) {
-  const ids = new Set([draft.introduction,draft.methodology].flatMap(data=>sentencesOf(data)).flatMap(s=>s.evidence.map(e=>e.source_id)));
+  const ids = new Set([...([draft.introduction,draft.methodology].flatMap(data=>sentencesOf(data)).flatMap(s=>s.evidence.map(e=>e.source_id))),...(draft.introduction?.research_gap?.source_ids||[])]);
   return draft.references.filter(ref=>ids.has(ref.id)).sort((a,b)=>a.authors[0]?.family.localeCompare(b.authors[0]?.family) || a.title.localeCompare(b.title));
 }
 export function citationMap(references) {
@@ -131,7 +140,7 @@ export function articleBlocks(draft) {
   const refs = usedReferences(draft), labels = citationMap(refs);
   const blocks = [{type:'title',text:draft.title},{type:'note',text:'Rancangan penelitian sampai metodologi. Detail bertanda [perlu diisi] harus dilengkapi penulis; kesesuaian makna kutipan perlu diperiksa pada sumber asli.'},{type:'heading',text:'Pendahuluan'}];
   const add = paragraphs=>paragraphs.forEach(p=>blocks.push({type:'paragraph',text:p.sentences.map(s=>sentenceText(s,labels)).join(' ')}));
-  if (draft.introduction) {add(draft.introduction.paragraphs);blocks.push({type:'subheading',text:'Tujuan penelitian'},{type:'paragraph',text:draft.introduction.objective},{type:'subheading',text:'Rumusan masalah'},{type:'paragraph',text:draft.introduction.question});}
+  if (draft.introduction) {add(draft.introduction.paragraphs);const gap=draft.introduction.research_gap;if(gap)blocks.push({type:'subheading',text:'Gap penelitian berdasarkan sumber terpilih'},{type:'paragraph',text:gap.summary+(gap.source_ids.length?` (${[...new Set(gap.source_ids)].map(id=>labels.get(id)).join('; ')}).`:'')},{type:'paragraph',text:gap.proposed_direction},{type:'note',text:'Gap ini merupakan peluang penelitian berdasarkan abstrak sumber terpilih; belum membuktikan bahwa penelitian tersebut belum pernah dilakukan.'});blocks.push({type:'subheading',text:'Tujuan penelitian'},{type:'paragraph',text:draft.introduction.objective},{type:'subheading',text:'Rumusan masalah'},{type:'paragraph',text:draft.introduction.question});}
   blocks.push({type:'heading',text:'Metodologi'});
   for (const section of draft.methodology?.sections || []) {blocks.push({type:'subheading',text:section.heading});add(section.paragraphs);}
   if (draft.methodology?.missing_info.length) blocks.push({type:'subheading',text:'Informasi yang perlu dilengkapi'},...draft.methodology.missing_info.map(text=>({type:'paragraph',text})));
@@ -140,7 +149,6 @@ export function articleBlocks(draft) {
 }
 export function assertExportable(draft) {
   if (!draft.title || !draft.introduction || !draft.methodology) throw Error('Selesaikan judul, pendahuluan, dan metodologi terlebih dahulu.');
-  if (draft.pendingAudit?.length) throw Error('Draf impor memerlukan pemeriksaan ulang DOI dan audit bukti sebelum diekspor.');
   const refs = selectedSources(draft);
   validatePassages('introduction',draft.introduction,refs);
   validatePassages('methodology',draft.methodology,refs);
